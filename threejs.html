@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Three.js Half-Sphere with Texture</title>
+      <style>
+         body {
+            margin: 0;
+         }
+         canvas {
+            display: block;
+         }
+      </style>
+   </head>
+   <body>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+      <script>
+         // TO-DO: fix this mapping, keep half sphere, 'squish' sphere
+
+         
+         // Scene setup
+         const scene = new THREE.Scene();
+         const camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+         );
+         const renderer = new THREE.WebGLRenderer();
+         renderer.setSize(window.innerWidth, window.innerHeight);
+         document.body.appendChild(renderer.domElement);
+
+         // OrbitControls
+         const controls = new THREE.OrbitControls(camera, renderer.domElement);
+         controls.enableDamping = true; // Smooth camera movement
+         controls.dampingFactor = 0.05;
+
+         // Add a half-sphere (hemisphere)
+         const geometry = new THREE.SphereGeometry(
+            5,
+            32,
+            32,
+            0,
+            Math.PI * 2,
+            0,
+            Math.PI
+         ); // Half-sphere
+
+         // Adjust UV mapping to center the texture at the top of the dome
+         const uvAttribute = geometry.attributes.uv;
+         for (let i = 0; i < uvAttribute.count; i++) {
+            const u = uvAttribute.getX(i);
+            const v = uvAttribute.getY(i);
+            // Map the center of the texture to the top of the hemisphere
+            uvAttribute.setXY(i, u * 1.8, v * 1.1); // Flip the V coordinate
+         }
+
+         const textureLoader = new THREE.TextureLoader();
+         const texture = textureLoader.load("texture.png"); // Load the texture
+         const material = new THREE.MeshBasicMaterial({
+            map: texture,
+         });
+         const halfSphere = new THREE.Mesh(geometry, material);
+         scene.add(halfSphere);
+
+         // Add ambient light (optional, for additional illumination)
+         const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
+         scene.add(ambientLight);
+
+         // Camera position
+         camera.position.z = 15;
+
+         // Animation loop
+         function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // Update OrbitControls
+            renderer.render(scene, camera);
+         }
+         animate();
+
+         // Handle window resize
+         window.addEventListener("resize", () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+         });
+      </script>
+   </body>
+</html>

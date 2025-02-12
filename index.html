@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>Shield</title>
+   </head>
+   <body>
+      <canvas
+         id="myCanvas"
+         width="600"
+         height="600"
+         style="background-color: black;"
+      >
+      </canvas>
+      <script src="shield.js"></script>
+      <script>
+         const ctx = myCanvas.getContext("2d");
+         
+         const center = {
+            x: myCanvas.width / 2,
+            y: myCanvas.height / 2,
+         };
+         const offset = {
+            mag:myCanvas.width * 0.1,
+            dir:0
+         };
+         const radius = myCanvas.width * 0.3;
+         let rotation=0;
+
+         const pos={
+            x:center.x+offset.mag*Math.cos(offset.dir),
+            y:center.y+offset.mag*Math.sin(offset.dir)
+         }
+
+         const lightRayTip={
+            x:0,
+            y:0
+         }  
+         const shield = new Shield(pos, radius);
+         shield.draw(ctx);
+
+         animate();
+
+         function animate(){
+            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
+            offset.dir+=0.02;
+            rotation-=0.01;
+            pos.x=center.x+offset.mag*Math.cos(offset.dir);
+            pos.y=center.y+offset.mag*Math.sin(offset.dir);
+            shield.update(pos,rotation);
+            shield.draw(ctx,lightRayTip);
+            requestAnimationFrame(animate);
+         }
+
+         myCanvas.addEventListener("mousemove", (event) => {
+            lightRayTip.x=event.offsetX;
+            lightRayTip.y=event.offsetY;
+         });
+      </script>
+   </body>
+</html>

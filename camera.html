@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>Blue Pixel Detector</title>
+      <style>
+         #canvas {
+            border: 1px solid black;
+         }
+         #video {
+            display: none;
+         }
+         body{
+            text-align: center;
+         }
+      </style>
+   </head>
+   <body>
+      <video id="video" autoplay></video>
+      <canvas id="canvas" width="600" height="600"></canvas>
+      <canvas id="largeCanvas"></canvas>
+      <div id="status"></div>
+
+      <script src="shield.js"></script>
+      <script src="markerDetector.js"></script>
+      <script>
+         const video = document.getElementById("video");
+         const canvas = document.getElementById("canvas");
+         canvas.style.display="none";
+         const ctx = canvas.getContext("2d");
+         const largeCtx=largeCanvas.getContext("2d");
+         const status = document.getElementById("status");
+
+         const center = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+         };
+
+         const subsamplingScaler=0.5;
+
+         const radius = canvas.width * 0.3;
+
+         const pos = center;
+
+         const lightRayTip = {
+            x: 200,
+            y: 0,
+         };
+         const shield = new Shield(pos, radius);
+
+         const markerDetector = new MarkerDetector();
+         // Request camera access
+         navigator.mediaDevices
+            .getUserMedia({ video: true })
+            .then((stream) => {
+               video.srcObject = stream;
+               video.onplaying = () => {
+                  canvas.width = video.videoWidth *subsamplingScaler;
+                  canvas.height = video.videoHeight *subsamplingScaler;
+                  largeCanvas.width = video.videoWidth;
+                  largeCanvas.height = video.videoHeight;
+                  requestAnimationFrame(processFrame);
+               };
+            })
+            .catch((err) => {
+               status.textContent = "Error accessing camera: " + err;
+            });
+
+         function processFrame() {
+            // Draw video frame to canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            largeCtx.drawImage(video, 0, 0, largeCanvas.width, largeCanvas.height);
+
+            // Get pixel data
+            const imageData = ctx.getImageData(
+               0,
+               0,
+               canvas.width,
+               canvas.height
+            );
+            const { leftMarker, rightMarker } =
+               markerDetector.detect(imageData);
+
+            if (leftMarker.points.length > 0 && rightMarker.points.length > 0) {
+               const center = {
+                  x: (leftMarker.centroid.x + rightMarker.centroid.x) / 2 / subsamplingScaler,
+                  y: (leftMarker.centroid.y + rightMarker.centroid.y) / 2 / subsamplingScaler,
+               };
+
+               const angle = Math.atan2(
+                  rightMarker.centroid.y - leftMarker.centroid.y,
+                  rightMarker.centroid.x - leftMarker.centroid.x
+               );
+
+               const size = distance(
+                  leftMarker.centroid,
+                  rightMarker.centroid
+               )/subsamplingScaler;
+
+               largeCtx.save();  
+               largeCtx.translate(center.x, center.y);
+               largeCtx.scale(size / shield.radius, size / shield.radius);
+              
+               shield.update({x:0,y:0}, angle);
+               const correctedLightRayTip = {
+                  x: lightRayTip.x - center.x,
+                  y: lightRayTip.y - center.y,
+               };
+               shield.draw(largeCtx, correctedLightRayTip);
+               largeCtx.restore();
+               status.textContent = "";
+            } else {
+               status.textContent = "No markers detected";
+            }
+
+            // Continue processing frames
+            requestAnimationFrame(processFrame);
+         }
+
+         function distance(p1, p2) {
+            return Math.sqrt(
+               Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)
+            );
+         }
+      </script>
+   </body>
+</html>
